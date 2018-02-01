@@ -4,7 +4,7 @@ tfr.predict <- function(mcmc.set=NULL, end.year=2100,
 						start.year=NULL, nr.traj = NULL, thin = NULL, burnin=2000, 
 						use.diagnostics=FALSE,
 						use.tfr3=TRUE, burnin3=10000,
-						mu=2.1, rho=0.8859, sigmaAR1=0.1016,
+						mu=2.1, rho=0.8859, sigmaAR1=0.1016, evo=FALSE, h2=0.3,
 						min.tfr=0.5, use.correlation=FALSE,
 						save.as.ascii=1000, output.dir = NULL,
 						low.memory=TRUE,
@@ -47,7 +47,7 @@ tfr.predict <- function(mcmc.set=NULL, end.year=2100,
 	}
 	invisible(make.tfr.prediction(mcmc.set, end.year=end.year, replace.output=replace.output,  
 					start.year=start.year, nr.traj=nr.traj, burnin=burnin, thin=thin, use.tfr3=has.phase3, burnin3=burnin3,
-					mu=mu, rho=rho,  sigmaAR1 = sigmaAR1, min.tfr=min.tfr, use.correlation=use.correlation,
+					mu=mu, rho=rho,  sigmaAR1 = sigmaAR1, evo=FALSE, h2=0.3, min.tfr=min.tfr, use.correlation=use.correlation,
 					save.as.ascii=save.as.ascii,
 					output.dir=output.dir, verbose=verbose, ...))			
 }
@@ -106,7 +106,7 @@ tfr.predict.extra <- function(sim.dir=file.path(getwd(), 'bayesTFR.output'),
 	}
 	new.pred <- make.tfr.prediction(mcmc.set, start.year=pred$start.year, end.year=pred$end.year, replace.output=FALSE,
 									nr.traj=pred$nr.traj, burnin=pred$burnin, use.tfr3=use.tfr3, burnin3=pred$burnin3,
-									use.correlation=pred$use.correlation, mu=pred$mu, rho=pred$rho, sigmaAR1=pred$sigmaAR1, 
+									use.correlation=pred$use.correlation, mu=pred$mu, rho=pred$rho, sigmaAR1=pred$sigmaAR1, evo=evo, h2=h2,
 									min.tfr=pred$min.tfr, countries=countries.idx, save.as.ascii=0, output.dir=prediction.dir,
 									force.creating.thinned.mcmc=TRUE,
 									write.summary.files=FALSE, write.trajectories=TRUE, verbose=verbose)
@@ -147,7 +147,7 @@ tfr.predict.extra <- function(sim.dir=file.path(getwd(), 'bayesTFR.output'),
 make.tfr.prediction <- function(mcmc.set, start.year=NULL, end.year=2100, replace.output=FALSE,
 								nr.traj = NULL, burnin=0, thin = NULL, 
 								use.tfr3=TRUE, mcmc3.set=NULL, burnin3=0,
-								mu=2.1, rho=0.9057, sigmaAR1 = 0.0922, min.tfr=0.5,
+								mu=2.1, rho=0.9057, sigmaAR1 = 0.0922, min.tfr=0.5, evo=FALSE, h2=0.3,
 								use.correlation=FALSE, countries = NULL,
 								adj.factor1=NA, adj.factor2=0, forceAR1=FALSE,
 								boost.first.period.in.phase2=TRUE,
@@ -483,8 +483,20 @@ make.tfr.prediction <- function(mcmc.set, start.year=NULL, end.year=2100, replac
 		                	}
 		                }
 					} else { # Phase III
-						new.tfr <- (mu.c[country] + rho.c[country]*(all.f_ps[icountry,year-1,s] - mu.c[country]) 
-										- W[icountry,year]*S11[icountry])						
+					  if(evo) {
+					    oldtfr <- all.f_ps[icountry,year-1,s]
+					    #The frequency of families with i children in generation t=0. Only find frequency up to family size of 10, effectively assuming cap
+					    phi <- dpois(0:10, lambda = oldtfr)
+					    #Proportion of children who are in a family with i children
+					    pi <- c(0:10) * phi / oldtfr
+					    #Mean number of children each child has in its family 
+					    kidstfr <- sum(c(0:10) * pi)
+					    h2g <- h2/6 #approximates 30 years per generation
+					    new.tfr <- (oldtfr + h2g*(kidstfr - oldtfr) - W[icountry,year]*S11[icountry])
+					  } else {
+					    new.tfr <- (mu.c[country] + rho.c[country]*(all.f_ps[icountry,year-1,s] - mu.c[country]) 
+					                - W[icountry,year]*S11[icountry])
+					  }						
 						if(!use.correlation || is.na(epsilons[country])) {
 							passed <- FALSE
 	 						for(i in 1:50){
@@ -549,7 +561,7 @@ make.tfr.prediction <- function(mcmc.set, start.year=NULL, end.year=2100, replac
 				nr.projections=nr_project,
 				burnin=burnin, thin=thin,
 				end.year=end.year, use.tfr3=has.phase3, burnin3=burnin3, thin3=thin3,
-				mu=mu, rho=rho, sigmaAR1 = sigmaAR1, mu.c=mu.c.mean, rho.c=rho.c.mean, min.tfr=min.tfr,
+				mu=mu, rho=rho, sigmaAR1 = sigmaAR1, mu.c=mu.c.mean, rho.c=rho.c.mean, min.tfr=min.tfr, evo=evo, h2=h2,
 				use.correlation=use.correlation, start.year=start.year,
 				present.year.index=present.year.index,
 				present.year.index.all=ltfr_matrix.all),
@@ -1190,7 +1202,7 @@ tfr.median.adjust <- function(sim.dir, countries, factor1=2/3, factor2=1/3, forc
 	new.pred <- make.tfr.prediction(mcmc.set, start.year=pred$start.year, end.year=pred$end.year, replace.output=FALSE,
 									nr.traj=NULL, burnin=0, 
 									use.tfr3=pred$use.tfr3, mcmc3.set=m3.set, burnin3=pred$burnin3,
-									mu=pred$mu, rho=pred$rho, sigmaAR1=pred$sigmaAR1, min.tfr=pred$min.tfr,
+									mu=pred$mu, rho=pred$rho, sigmaAR1=pred$sigmaAR1, min.tfr=pred$min.tfr, evo=evo, h2=h2,
 									countries=countries.idx, adj.factor1=factor1, adj.factor2=factor2,
 									forceAR1=forceAR1, save.as.ascii=0, output.dir=NULL,
 									write.summary.files=FALSE, is.mcmc.set.thinned=TRUE, 
