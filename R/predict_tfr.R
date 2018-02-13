@@ -47,7 +47,7 @@ tfr.predict <- function(mcmc.set=NULL, end.year=2100,
 	}
 	invisible(make.tfr.prediction(mcmc.set, end.year=end.year, replace.output=replace.output,  
 					start.year=start.year, nr.traj=nr.traj, burnin=burnin, thin=thin, use.tfr3=has.phase3, burnin3=burnin3,
-					mu=mu, rho=rho,  sigmaAR1 = sigmaAR1, evo=FALSE, h2=0.3, min.tfr=min.tfr, use.correlation=use.correlation,
+					mu=mu, rho=rho,  sigmaAR1 = sigmaAR1, evo=evo, h2=h2, min.tfr=min.tfr, use.correlation=use.correlation,
 					save.as.ascii=save.as.ascii,
 					output.dir=output.dir, verbose=verbose, ...))			
 }
