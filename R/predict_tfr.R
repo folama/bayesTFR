@@ -483,7 +483,7 @@ make.tfr.prediction <- function(mcmc.set, start.year=NULL, end.year=2100, replac
 		                	}
 		                }
 					} else { # Phase III
-					  if(evo) {
+					  if(evo==TRUE) {
 					    oldtfr <- all.f_ps[icountry,year-1,s]
 					    #The frequency of families with i children in generation t=0. Only find frequency up to family size of 10, effectively assuming cap
 					    phi <- dpois(0:10, lambda = oldtfr)
